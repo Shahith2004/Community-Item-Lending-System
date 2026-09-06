@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Item - {{ item.item_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      <!-- Breadcrumbs -->
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0 small">
+          <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-decoration-none">Dashboard</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('my_items') }}" class="text-decoration-none">My Items</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Edit {{ item.item_name }}</li>
+        </ol>
+      </nav>
+
+      <div class="app-card">
+        <div class="p-4 p-md-5">
+          
+          <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+            <div class="brand-icon-box" style="width: 48px; height: 48px; font-size: 1.3rem;">
+              <i class="bi bi-pencil-square"></i>
+            </div>
+            <div>
+              <h2 class="h4 fw-bold mb-0">Edit Item Details</h2>
+              <p class="text-muted small mb-0">Update item specifications, availability status, or photo.</p>
+            </div>
+          </div>
+
+          <form method="POST" enctype="multipart/form-data" action="{{ url_for('edit_item', item_id=item.id) }}">
+            
+            <!-- Item Name -->
+            <div class="mb-3">
+              <label for="item_name" class="form-label">
+                <i class="bi bi-tag text-primary"></i> Item Name <span class="text-danger">*</span>
+              </label>
+              <input type="text" id="item_name" name="item_name" class="form-control" value="{{ item.item_name }}" required>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <!-- Category -->
+              <div class="col-md-6">
+                <label for="category" class="form-label">
+                  <i class="bi bi-grid text-primary"></i> Category <span class="text-danger">*</span>
+                </label>
+                <select id="category" name="category" class="form-select" required>
+                  <option value="Books" {% if item.category == 'Books' %}selected{% endif %}>📚 Books & Literature</option>
+                  <option value="Tools" {% if item.category == 'Tools' %}selected{% endif %}>🔧 Tools & Hardware</option>
+                  <option value="Sports" {% if item.category == 'Sports' %}selected{% endif %}>⚽ Sports & Outdoors</option>
+                  <option value="Electronics" {% if item.category == 'Electronics' %}selected{% endif %}>💻 Electronics & Gadgets</option>
+                  <option value="Household" {% if item.category == 'Household' %}selected{% endif %}>🏠 Household & Gardening</option>
+                  <option value="Other" {% if item.category == 'Other' %}selected{% endif %}>📦 Other Items</option>
+                </select>
+              </div>
+
+              <!-- Availability Status -->
+              <div class="col-md-6">
+                <label for="availability" class="form-label">
+                  <i class="bi bi-info-circle text-primary"></i> Availability Status <span class="text-danger">*</span>
+                </label>
+                <select id="availability" name="availability" class="form-select" required>
+                  <option value="Available" {% if item.availability == 'Available' %}selected{% endif %}>🟢 Available for Borrowing</option>
+                  <option value="Lent" {% if item.availability == 'Lent' %}selected{% endif %}>🟡 Currently Lent Out</option>
+                  <option value="Unavailable" {% if item.availability == 'Unavailable' %}selected{% endif %}>⚪ Temporarily Unavailable</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-3">
+              <label for="description" class="form-label">
+                <i class="bi bi-card-text text-primary"></i> Description & Condition
+              </label>
+              <textarea id="description" name="description" class="form-control" rows="4">{{ item.description or '' }}</textarea>
+            </div>
+
+            <!-- Existing Photo Preview & Replacement -->
+            <div class="mb-4">
+              <label class="form-label">
+                <i class="bi bi-camera text-primary"></i> Item Photo
+              </label>
+
+              {% if item.image %}
+              <div class="p-3 bg-light rounded-3 border mb-3 d-flex align-items-center gap-3">
+                <img src="{{ url_for('static', filename='uploads/' + item.image) }}" alt="{{ item.item_name }}" class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
+                <div class="flex-grow-1">
+                  <div class="fw-semibold text-dark">Current Photo</div>
+                  <div class="small text-muted mb-2">Saved on platform</div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="remove_image" id="remove_image" value="1">
+                    <label class="form-check-label text-danger small fw-semibold" for="remove_image">
+                      <i class="bi bi-trash"></i> Remove current photo
+                    </label>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+
+              <div class="image-dropzone" id="imageDropzone">
+                <input type="file" id="imageInput" name="image" accept="image/png, image/jpeg, image/jpg, image/webp, image/gif">
+                
+                <div id="dropzonePrompt">
+                  <div class="dropzone-icon">
+                    <i class="bi bi-cloud-arrow-up-fill"></i>
+                  </div>
+                  <h6 class="fw-bold text-dark mb-1">{% if item.image %}Upload new photo to replace{% else %}Upload a photo{% endif %}</h6>
+                  <p class="text-muted small mb-0">Drag and drop or click to choose file (PNG, JPG, WEBP up to 16MB)</p>
+                </div>
+
+                <div id="imagePreviewContainer" class="d-none">
+                  <div class="image-preview-wrapper">
+                    <img id="imagePreview" src="#" alt="New item photo preview">
+                    <button type="button" class="btn-remove-preview" id="removeImageBtn" title="Remove selected image">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </div>
+                  <div class="small text-success fw-semibold mt-2">
+                    <i class="bi bi-check-circle-fill me-1"></i> New photo selected!
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex flex-wrap gap-2 pt-2">
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="bi bi-check-circle me-1"></i> Save Changes
+              </button>
+              <a href="{{ url_for('my_items') }}" class="btn btn-light px-4">
+                Cancel
+              </a>
+            </div>
+
+          </form>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

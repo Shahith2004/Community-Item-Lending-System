@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Add New Item{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      <!-- Breadcrumbs -->
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0 small">
+          <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-decoration-none">Dashboard</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('my_items') }}" class="text-decoration-none">My Items</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Add New Item</li>
+        </ol>
+      </nav>
+
+      <div class="app-card">
+        <div class="p-4 p-md-5">
+          
+          <div class="text-center mb-4">
+            <div class="brand-icon-box mx-auto mb-3" style="width: 54px; height: 54px; font-size: 1.6rem;">
+              <i class="bi bi-plus-circle-fill"></i>
+            </div>
+            <h2 class="h3 fw-bold mb-1">List an Item for Sharing</h2>
+            <p class="text-muted">Offer books, tools, sports gear, electronics, or household goods to your neighbors.</p>
+          </div>
+
+          <form method="POST" enctype="multipart/form-data" action="{{ url_for('add_item') }}">
+            
+            <!-- Item Name -->
+            <div class="mb-3">
+              <label for="item_name" class="form-label">
+                <i class="bi bi-tag text-primary"></i> Item Name <span class="text-danger">*</span>
+              </label>
+              <input type="text" id="item_name" name="item_name" class="form-control" placeholder="e.g. Cordless Drill Set, Cricket Kit, Harry Potter Set" required autofocus>
+              <div class="form-text">Choose a descriptive and clear title for your item.</div>
+            </div>
+
+            <!-- Category -->
+            <div class="mb-3">
+              <label for="category" class="form-label">
+                <i class="bi bi-grid text-primary"></i> Category <span class="text-danger">*</span>
+              </label>
+              <select id="category" name="category" class="form-select" required>
+                <option value="">-- Choose Category --</option>
+                <option value="Books">📚 Books & Literature</option>
+                <option value="Tools">🔧 Tools & Hardware</option>
+                <option value="Sports">⚽ Sports & Outdoors</option>
+                <option value="Electronics">💻 Electronics & Gadgets</option>
+                <option value="Household">🏠 Household & Gardening</option>
+                <option value="Other">📦 Other Items</option>
+              </select>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-3">
+              <label for="description" class="form-label">
+                <i class="bi bi-card-text text-primary"></i> Description & Condition
+              </label>
+              <textarea id="description" name="description" class="form-control" rows="4" placeholder="Describe the item's condition, included accessories, or borrowing guidelines..."></textarea>
+            </div>
+
+            <!-- Photo Upload Area -->
+            <div class="mb-4">
+              <label class="form-label">
+                <i class="bi bi-camera text-primary"></i> Item Photo <span class="text-muted fw-normal">(Highly Recommended)</span>
+              </label>
+              
+              <div class="image-dropzone" id="imageDropzone">
+                <input type="file" id="imageInput" name="image" accept="image/png, image/jpeg, image/jpg, image/webp, image/gif">
+                
+                <div id="dropzonePrompt">
+                  <div class="dropzone-icon">
+                    <i class="bi bi-cloud-arrow-up-fill"></i>
+                  </div>
+                  <h6 class="fw-bold text-dark mb-1">Click to browse or drag & drop photo here</h6>
+                  <p class="text-muted small mb-0">PNG, JPG, WEBP or GIF up to 16MB. High-quality landscape photos work best.</p>
+                </div>
+
+                <div id="imagePreviewContainer" class="d-none">
+                  <div class="image-preview-wrapper">
+                    <img id="imagePreview" src="#" alt="Selected item photo preview">
+                    <button type="button" class="btn-remove-preview" id="removeImageBtn" title="Remove selected image">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </div>
+                  <div class="small text-success fw-semibold mt-2">
+                    <i class="bi bi-check-circle-fill me-1"></i> Photo selected successfully! Click or drag again to replace.
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="d-flex flex-wrap gap-2 pt-2">
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="bi bi-check-circle-fill me-1"></i> Publish Item Listing
+              </button>
+              <a href="{{ url_for('my_items') }}" class="btn btn-light px-4">
+                Cancel
+              </a>
+            </div>
+
+          </form>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

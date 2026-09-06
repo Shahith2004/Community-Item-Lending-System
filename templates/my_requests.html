@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}My Active Requests & Borrows{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header Card -->
+  <div class="page-header-card d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <h2 class="h3 fw-bold mb-0">My Active Requests & Borrows</h2>
+        <span class="badge bg-primary rounded-pill px-3 py-1 font-monospace">{{ requests|length }}</span>
+      </div>
+      <p class="text-muted mb-0">Track items you have requested from neighbors or currently have in your possession.</p>
+    </div>
+    <a href="{{ url_for('browse_items') }}" class="btn btn-primary shadow-sm">
+      <i class="bi bi-search me-1"></i> Browse More Items
+    </a>
+  </div>
+
+  {% if requests %}
+  <div class="row g-3">
+    {% for req in requests %}
+    <div class="col-12">
+      <div class="app-card p-3 p-md-4">
+        <div class="row align-items-center g-3">
+          
+          <!-- Item Photo & Details -->
+          <div class="col-md-5 d-flex align-items-center gap-3">
+            {% if req.image %}
+              <img src="{{ url_for('static', filename='uploads/' + req.image) }}" alt="{{ req.item_name }}" class="item-thumb-sm">
+            {% else %}
+              <div class="item-thumb-placeholder-sm">
+                {% if req.category == 'Books' %}<i class="bi bi-book"></i>
+                {% elif req.category == 'Tools' %}<i class="bi bi-tools"></i>
+                {% elif req.category == 'Sports' %}<i class="bi bi-trophy"></i>
+                {% elif req.category == 'Electronics' %}<i class="bi bi-laptop"></i>
+                {% else %}<i class="bi bi-box-seam"></i>{% endif %}
+              </div>
+            {% endif %}
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="category-chip" style="font-size: 0.75rem;">{{ req.category }}</span>
+                {% if req.status == 'Pending' %}
+                  <span class="badge-status badge-pending"><i class="bi bi-clock-fill"></i> Awaiting Approval</span>
+                {% elif req.status == 'Approved' %}
+                  <span class="badge-status badge-approved"><i class="bi bi-check-circle-fill"></i> Currently Borrowed</span>
+                {% endif %}
+              </div>
+              <h5 class="h6 fw-bold text-dark mb-0">
+                <a href="{{ url_for('item_details', item_id=req.item_id) }}" class="text-dark text-decoration-none hover-primary">
+                  {{ req.item_name }}
+                </a>
+              </h5>
+              <span class="text-muted small">Requested: {{ req.requested_at.strftime('%b %d, %Y') if req.requested_at else 'Recent' }}</span>
+            </div>
+          </div>
+
+          <!-- Owner Information -->
+          <div class="col-md-4 border-start border-light ps-md-4">
+            <div class="text-muted small mb-1">Item Owner:</div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <div class="avatar-circle" style="width: 28px; height: 28px; font-size: 0.75rem;">
+                {{ req.owner_name[:1] | upper }}
+              </div>
+              <strong class="text-dark">{{ req.owner_name }}</strong>
+            </div>
+            <div class="text-muted small d-flex flex-column gap-1">
+              <span><i class="bi bi-envelope text-primary me-1"></i> {{ req.owner_email }}</span>
+              {% if req.owner_phone %}
+              <span><i class="bi bi-telephone text-primary me-1"></i> {{ req.owner_phone }}</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="col-md-3 text-md-end">
+            {% if req.status == 'Approved' %}
+            <button type="button" class="btn btn-sm btn-primary shadow-sm w-100" data-bs-toggle="modal" data-bs-target="#returnModal{{ req.id }}">
+              <i class="bi bi-arrow-repeat me-1"></i> Mark as Returned
+            </button>
+            {% else %}
+            <div class="text-muted small">
+              <i class="bi bi-hourglass-split text-warning me-1"></i> Pending owner's approval
+            </div>
+            {% endif %}
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Return Confirmation Modal -->
+    {% if req.status == 'Approved' %}
+    <div class="modal fade" id="returnModal{{ req.id }}" tabindex="-1" aria-labelledby="returnLabel{{ req.id }}" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title fw-bold" id="returnLabel{{ req.id }}">Confirm Return of Item</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body py-3">
+            <p class="text-dark mb-1">
+              Have you safely returned <strong>{{ req.item_name }}</strong> back to <strong>{{ req.owner_name }}</strong>?
+            </p>
+            <p class="text-muted small mb-0">
+              Marking this as returned will make the item available for other neighbors to borrow and log a completed transaction.
+            </p>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+            <form method="POST" action="{{ url_for('return_item', request_id=req.id) }}">
+              <button type="submit" class="btn btn-primary">Yes, Confirm Return</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">
+      <i class="bi bi-send"></i>
+    </div>
+    <h3 class="h4 fw-bold text-dark mb-2">No Active Borrow Requests</h3>
+    <p class="text-muted mb-4" style="max-width: 450px; margin: 0 auto;">
+      You don't currently have any pending requests or borrowed items. Discover books, tools, or appliances in your neighborhood catalog!
+    </p>
+    <a href="{{ url_for('browse_items') }}" class="btn btn-primary px-4">
+      <i class="bi bi-search me-1"></i> Browse Community Items
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

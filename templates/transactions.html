@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Completed Transactions{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header Card -->
+  <div class="page-header-card d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <h2 class="h3 fw-bold mb-0">Completed Lending Transactions</h2>
+        <span class="badge bg-success rounded-pill px-3 py-1 font-monospace">{{ transactions|length }}</span>
+      </div>
+      <p class="text-muted mb-0">Official ledger of completed resource sharing cycles where items were borrowed and returned safely.</p>
+    </div>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-light">
+      <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+    </a>
+  </div>
+
+  {% if transactions %}
+  <div class="row g-3">
+    {% for txn in transactions %}
+    <div class="col-12">
+      <div class="app-card p-3 p-md-4">
+        <div class="row align-items-center g-3">
+          
+          <!-- Transaction Badge & Item -->
+          <div class="col-md-5 d-flex align-items-center gap-3">
+            {% if txn.image %}
+              <img src="{{ url_for('static', filename='uploads/' + txn.image) }}" alt="{{ txn.item_name }}" class="item-thumb-sm">
+            {% else %}
+              <div class="item-thumb-placeholder-sm">
+                <i class="bi bi-box-seam"></i>
+              </div>
+            {% endif %}
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-light text-muted font-monospace border small">#TXN-{{ txn.id }}</span>
+                <span class="category-chip" style="font-size: 0.75rem;">{{ txn.category }}</span>
+                <span class="badge-status badge-returned"><i class="bi bi-check-circle-fill"></i> Completed</span>
+              </div>
+              <h5 class="h6 fw-bold text-dark mb-0">{{ txn.item_name }}</h5>
+              <span class="text-muted small"><i class="bi bi-calendar-check me-1"></i>{{ txn.requested_at.strftime('%b %d, %Y') if txn.requested_at else 'Recent' }}</span>
+            </div>
+          </div>
+
+          <!-- Participants: Lender & Borrower -->
+          <div class="col-md-5 border-start border-light ps-md-4">
+            <div class="row g-2 small">
+              <div class="col-6">
+                <div class="text-muted" style="font-size: 0.75rem; text-transform: uppercase; font-weight: 600;">Lender (Owner)</div>
+                <strong class="text-dark d-block">{{ txn.owner_name }}</strong>
+                <span class="text-muted text-truncate d-block">{{ txn.owner_email }}</span>
+              </div>
+              <div class="col-6">
+                <div class="text-muted" style="font-size: 0.75rem; text-transform: uppercase; font-weight: 600;">Borrower</div>
+                <strong class="text-dark d-block">{{ txn.borrower_name }}</strong>
+                <span class="text-muted text-truncate d-block">{{ txn.borrower_email }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Impact Status -->
+          <div class="col-md-2 text-md-end">
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill small d-inline-flex align-items-center gap-1">
+              <i class="bi bi-recycle"></i> Kept in Use
+            </span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">
+      <i class="bi bi-receipt"></i>
+    </div>
+    <h3 class="h4 fw-bold text-dark mb-2">No Transactions Recorded</h3>
+    <p class="text-muted mb-4" style="max-width: 450px; margin: 0 auto;">
+      When borrowed items are safely returned to their owners, a permanent record is created here commemorating the resource sharing.
+    </p>
+    <a href="{{ url_for('browse_items') }}" class="btn btn-primary px-4">
+      <i class="bi bi-search me-1"></i> Browse Community Items
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

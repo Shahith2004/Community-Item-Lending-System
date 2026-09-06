@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Community Items{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header Card -->
+  <div class="page-header-card mb-4">
+    <div class="row align-items-center">
+      <div class="col-lg-8">
+        <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1 fw-bold small mb-2 d-inline-block">
+          <i class="bi bi-shop me-1"></i> Neighborhood Marketplace
+        </span>
+        <h2 class="display-6 fw-bold mb-1">Browse Available Items</h2>
+        <p class="text-muted mb-0">Search and discover useful resources that your neighbors are happy to lend.</p>
+      </div>
+      <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+        <a href="{{ url_for('add_item') }}" class="btn btn-primary shadow-sm">
+          <i class="bi bi-plus-circle"></i> Share an Item
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Filter Card -->
+  <div class="app-card p-3 p-md-4 mb-4">
+    <form method="GET" action="{{ url_for('browse_items') }}">
+      <div class="row g-2 align-items-center">
+        
+        <!-- Search Input -->
+        <div class="col-md-6 col-lg-7">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Search by item name, keywords, or owner name..." value="{{ search }}">
+          </div>
+        </div>
+
+        <!-- Category Dropdown -->
+        <div class="col-md-4 col-lg-3">
+          <select name="category" class="form-select">
+            <option value="">All Categories</option>
+            <option value="Books" {% if selected_category == 'Books' %}selected{% endif %}>📚 Books</option>
+            <option value="Tools" {% if selected_category == 'Tools' %}selected{% endif %}>🔧 Tools</option>
+            <option value="Sports" {% if selected_category == 'Sports' %}selected{% endif %}>⚽ Sports</option>
+            <option value="Electronics" {% if selected_category == 'Electronics' %}selected{% endif %}>💻 Electronics</option>
+            <option value="Household" {% if selected_category == 'Household' %}selected{% endif %}>🏠 Household</option>
+            <option value="Other" {% if selected_category == 'Other' %}selected{% endif %}>📦 Other</option>
+          </select>
+        </div>
+
+        <!-- Search Button -->
+        <div class="col-md-2 col-lg-2 d-flex gap-1">
+          <button type="submit" class="btn btn-primary w-100">
+            Search
+          </button>
+          {% if search or selected_category %}
+          <a href="{{ url_for('browse_items') }}" class="btn btn-light" title="Reset Filters">
+            <i class="bi bi-x-lg"></i>
+          </a>
+          {% endif %}
+        </div>
+
+      </div>
+    </form>
+
+    <!-- Quick Category Pills -->
+    <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top">
+      <span class="text-muted small align-self-center me-1">Filter:</span>
+      <a href="{{ url_for('browse_items') }}" class="btn btn-sm {% if not selected_category %}btn-primary{% else %}btn-light{% endif %} rounded-pill px-3">All</a>
+      <a href="{{ url_for('browse_items', category='Books', search=search) }}" class="btn btn-sm {% if selected_category == 'Books' %}btn-primary{% else %}btn-light{% endif %} rounded-pill px-3">📚 Books</a>
+      <a href="{{ url_for('browse_items', category='Tools', search=search) }}" class="btn btn-sm {% if selected_category == 'Tools' %}btn-primary{% else %}btn-light{% endif %} rounded-pill px-3">🔧 Tools</a>
+      <a href="{{ url_for('browse_items', category='Sports', search=search) }}" class="btn btn-sm {% if selected_category == 'Sports' %}btn-primary{% else %}btn-light{% endif %} rounded-pill px-3">⚽ Sports</a>
+      <a href="{{ url_for('browse_items', category='Electronics', search=search) }}" class="btn btn-sm {% if selected_category == 'Electronics' %}btn-primary{% else %}btn-light{% endif %} rounded-pill px-3">💻 Electronics</a>
+      <a href="{{ url_for('browse_items', category='Household', search=search) }}" class="btn btn-sm {% if selected_category == 'Household' %}btn-primary{% else %}btn-light{% endif %} rounded-pill px-3">🏠 Household</a>
+    </div>
+
+  </div>
+
+  <!-- Results Count -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="text-muted small">
+      Showing <strong class="text-dark">{{ items|length }}</strong> available item{% if items|length != 1 %}s{% endif %}
+      {% if selected_category %}in <strong>{{ selected_category }}</strong>{% endif %}
+      {% if search %}matching "<strong>{{ search }}</strong>"{% endif %}
+    </div>
+  </div>
+
+  <!-- Items Grid -->
+  {% if items %}
+  <div class="row g-4">
+    {% for item in items %}
+    <div class="col-md-6 col-lg-4">
+      <div class="item-card">
+        
+        <!-- Photo -->
+        <div class="item-img-container">
+          {% if item.image %}
+            <img src="{{ url_for('static', filename='uploads/' + item.image) }}" alt="{{ item.item_name }}" loading="lazy">
+          {% else %}
+            <div class="item-img-placeholder placeholder-{{ item.category|lower }}">
+              {% if item.category == 'Books' %}<i class="bi bi-book"></i>
+              {% elif item.category == 'Tools' %}<i class="bi bi-tools"></i>
+              {% elif item.category == 'Sports' %}<i class="bi bi-trophy"></i>
+              {% elif item.category == 'Electronics' %}<i class="bi bi-laptop"></i>
+              {% else %}<i class="bi bi-box-seam"></i>{% endif %}
+              <span>{{ item.category }}</span>
+            </div>
+          {% endif %}
+
+          <span class="badge-status badge-available item-badge-top-right">
+            <i class="bi bi-check-circle-fill"></i> Available
+          </span>
+        </div>
+
+        <!-- Body -->
+        <div class="p-3 d-flex flex-column flex-grow-1">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="category-chip">{{ item.category }}</span>
+            <div class="d-flex align-items-center gap-1 text-muted small">
+              <i class="bi bi-person-circle"></i>
+              <span>{{ item.owner_name }}</span>
+            </div>
+          </div>
+
+          <h5 class="fw-bold text-dark mb-1">{{ item.item_name }}</h5>
+          <p class="text-muted small mb-3 flex-grow-1" style="min-height: 40px;">
+            {{ item.description or 'No description provided.' }}
+          </p>
+
+          <a href="{{ url_for('item_details', item_id=item.id) }}" class="btn btn-primary w-100 mt-auto">
+            View Details & Borrow <i class="bi bi-arrow-right ms-1"></i>
+          </a>
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <!-- Empty State -->
+  <div class="empty-state">
+    <div class="empty-state-icon">
+      <i class="bi bi-search"></i>
+    </div>
+    <h3 class="h4 fw-bold text-dark mb-2">No Items Found</h3>
+    <p class="text-muted mb-4" style="max-width: 450px; margin: 0 auto;">
+      {% if search or selected_category %}
+        No items matched your current search filters. Try clearing your filters or checking back later.
+      {% else %}
+        There are currently no items shared by other community members. Be the first to share!
+      {% endif %}
+    </p>
+    {% if search or selected_category %}
+      <a href="{{ url_for('browse_items') }}" class="btn btn-outline-primary px-4">
+        <i class="bi bi-arrow-clockwise me-1"></i> Clear All Filters
+      </a>
+    {% else %}
+      <a href="{{ url_for('add_item') }}" class="btn btn-primary px-4">
+        <i class="bi bi-plus-circle me-1"></i> List an Item
+      </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

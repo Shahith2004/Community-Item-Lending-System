@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Hero Welcome Banner -->
+  <div class="hero-gradient-card mb-4">
+    <div class="row align-items-center">
+      <div class="col-lg-8">
+        <span class="badge bg-white bg-opacity-25 text-white mb-2 px-3 py-2 rounded-pill font-monospace small">
+          <i class="bi bi-geo-alt-fill me-1"></i> Neighborhood Lending Hub
+        </span>
+        <h1 class="display-6 fw-bold text-white mb-2">Welcome back, {{ name }} 👋</h1>
+        <p class="text-white text-opacity-90 fs-6 mb-4" style="max-width: 600px;">
+          Share what you have, borrow what you need. Save money, reduce single-use consumption, and build trust in your local community.
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+          <a href="{{ url_for('browse_items') }}" class="btn btn-light shadow-sm">
+            <i class="bi bi-search text-primary"></i> Browse Community Items
+          </a>
+          <a href="{{ url_for('add_item') }}" class="btn btn-outline-light">
+            <i class="bi bi-plus-circle"></i> Share a New Item
+          </a>
+        </div>
+      </div>
+      <div class="col-lg-4 d-none d-lg-block text-end pe-4">
+        <div class="display-1 text-white text-opacity-25">
+          <i class="bi bi-share-fill"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Statistics Overview -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="stat-card h-100">
+        <div class="stat-icon indigo">
+          <i class="bi bi-box-seam"></i>
+        </div>
+        <div>
+          <div class="stat-val">{{ stats.my_items }}</div>
+          <div class="stat-lbl">My Listed Items</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card h-100">
+        <div class="stat-icon cyan">
+          <i class="bi bi-collection"></i>
+        </div>
+        <div>
+          <div class="stat-val">{{ stats.available_items }}</div>
+          <div class="stat-lbl">Available to Borrow</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card h-100">
+        <div class="stat-icon amber">
+          <i class="bi bi-bell"></i>
+        </div>
+        <div>
+          <div class="stat-val">{{ stats.pending_requests }}</div>
+          <div class="stat-lbl">Pending Requests</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card h-100">
+        <div class="stat-icon emerald">
+          <i class="bi bi-check-circle"></i>
+        </div>
+        <div>
+          <div class="stat-val">{{ stats.completed_transactions }}</div>
+          <div class="stat-lbl">Completed Returns</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Feature Action Grid -->
+  <div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="h4 fw-bold mb-0">Platform Hub</h3>
+      <span class="text-muted small">Quick navigation shortcuts</span>
+    </div>
+    
+    <div class="row g-3">
+      <!-- Browse Items -->
+      <div class="col-md-6 col-lg-3">
+        <a href="{{ url_for('browse_items') }}" class="app-card interactive-hover p-3 d-block text-decoration-none h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div class="stat-icon cyan" style="width: 46px; height: 46px; font-size: 1.25rem;">
+              <i class="bi bi-search"></i>
+            </div>
+            <div>
+              <h5 class="h6 fw-bold mb-1 text-dark">Browse Catalog</h5>
+              <p class="text-muted small mb-0">Discover shared items</p>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- Add Item -->
+      <div class="col-md-6 col-lg-3">
+        <a href="{{ url_for('add_item') }}" class="app-card interactive-hover p-3 d-block text-decoration-none h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div class="stat-icon indigo" style="width: 46px; height: 46px; font-size: 1.25rem;">
+              <i class="bi bi-camera-fill"></i>
+            </div>
+            <div>
+              <h5 class="h6 fw-bold mb-1 text-dark">List New Item</h5>
+              <p class="text-muted small mb-0">Upload photos & details</p>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- My Items -->
+      <div class="col-md-6 col-lg-3">
+        <a href="{{ url_for('my_items') }}" class="app-card interactive-hover p-3 d-block text-decoration-none h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div class="stat-icon emerald" style="width: 46px; height: 46px; font-size: 1.25rem;">
+              <i class="bi bi-box-seam"></i>
+            </div>
+            <div>
+              <h5 class="h6 fw-bold mb-1 text-dark">My Inventory</h5>
+              <p class="text-muted small mb-0">Manage listed items</p>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- Received Requests -->
+      <div class="col-md-6 col-lg-3">
+        <a href="{{ url_for('received_requests') }}" class="app-card interactive-hover p-3 d-block text-decoration-none h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div class="stat-icon amber" style="width: 46px; height: 46px; font-size: 1.25rem;">
+              <i class="bi bi-inbox-fill"></i>
+            </div>
+            <div>
+              <h5 class="h6 fw-bold mb-1 text-dark">Received Requests</h5>
+              <p class="text-muted small mb-0">Approve or reject borrows</p>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- My Requests -->
+      <div class="col-md-6 col-lg-3">
+        <a href="{{ url_for('my_requests') }}" class="app-card interactive-hover p-3 d-block text-decoration-none h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div class="stat-icon cyan" style="width: 46px; height: 46px; font-size: 1.25rem;">
+              <i class="bi bi-send-fill"></i>
+            </div>
+            <div>
+              <h5 class="h6 fw-bold mb-1 text-dark">Active Borrows</h5>
+              <p class="text-muted small mb-0">Track items & return</p>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- History -->
+      <div class="col-md-6 col-lg-3">
+        <a href="{{ url_for('request_history') }}" class="app-card interactive-hover p-3 d-block text-decoration-none h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div class="stat-icon indigo" style="width: 46px; height: 46px; font-size: 1.25rem;">
+              <i class="bi bi-clock-history"></i>
+            </div>
+            <div>
+              <h5 class="h6 fw-bold mb-1 text-dark">Request History</h5>
+              <p class="text-muted small mb-0">Past lending cycles</p>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- Transactions -->
+      <div class="col-md-6 col-lg-3">
+        <a href="{{ url_for('transactions') }}" class="app-card interactive-hover p-3 d-block text-decoration-none h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div class="stat-icon emerald" style="width: 46px; height: 46px; font-size: 1.25rem;">
+              <i class="bi bi-receipt"></i>
+            </div>
+            <div>
+              <h5 class="h6 fw-bold mb-1 text-dark">Transactions</h5>
+              <p class="text-muted small mb-0">Completed lending records</p>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- Profile -->
+      <div class="col-md-6 col-lg-3">
+        <a href="{{ url_for('profile') }}" class="app-card interactive-hover p-3 d-block text-decoration-none h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div class="stat-icon amber" style="width: 46px; height: 46px; font-size: 1.25rem;">
+              <i class="bi bi-person-circle"></i>
+            </div>
+            <div>
+              <h5 class="h6 fw-bold mb-1 text-dark">My Profile</h5>
+              <p class="text-muted small mb-0">Account & credentials</p>
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recently Listed Community Items Preview -->
+  {% if recent_items %}
+  <div class="mt-4 pt-2">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h3 class="h4 fw-bold mb-0">Recently Available Items</h3>
+        <p class="text-muted small mb-0">Latest additions shared by other community members</p>
+      </div>
+      <a href="{{ url_for('browse_items') }}" class="btn btn-sm btn-outline-primary">
+        View All Catalog <i class="bi bi-arrow-right ms-1"></i>
+      </a>
+    </div>
+
+    <div class="row g-4">
+      {% for item in recent_items %}
+      <div class="col-md-4">
+        <div class="item-card h-100">
+          <div class="item-img-container">
+            {% if item.image %}
+              <img src="{{ url_for('static', filename='uploads/' + item.image) }}" alt="{{ item.item_name }}" loading="lazy">
+            {% else %}
+              <div class="item-img-placeholder placeholder-{{ item.category|lower }}">
+                {% if item.category == 'Books' %}<i class="bi bi-book"></i>
+                {% elif item.category == 'Tools' %}<i class="bi bi-tools"></i>
+                {% elif item.category == 'Sports' %}<i class="bi bi-trophy"></i>
+                {% elif item.category == 'Electronics' %}<i class="bi bi-laptop"></i>
+                {% else %}<i class="bi bi-box-seam"></i>{% endif %}
+                <span>{{ item.category }}</span>
+              </div>
+            {% endif %}
+            <span class="badge-status badge-available item-badge-top-right">
+              <i class="bi bi-check-circle-fill"></i> Available
+            </span>
+          </div>
+          <div class="p-3 d-flex flex-column flex-grow-1">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="category-chip">{{ item.category }}</span>
+              <span class="text-muted small ms-auto"><i class="bi bi-person me-1"></i>{{ item.owner_name }}</span>
+            </div>
+            <h5 class="fw-bold text-dark mb-1">{{ item.item_name }}</h5>
+            <p class="text-muted small text-truncate mb-3">{{ item.description or 'No description provided.' }}</p>
+            <a href="{{ url_for('item_details', item_id=item.id) }}" class="btn btn-sm btn-primary mt-auto w-100">
+              View Details <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

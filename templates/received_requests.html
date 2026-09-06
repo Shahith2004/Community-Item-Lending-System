@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Received Borrow Requests{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header Card -->
+  <div class="page-header-card d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <h2 class="h3 fw-bold mb-0">Received Borrow Requests</h2>
+        <span class="badge bg-primary rounded-pill px-3 py-1 font-monospace">{{ requests|length }}</span>
+      </div>
+      <p class="text-muted mb-0">Review requests from community neighbors who wish to borrow your items.</p>
+    </div>
+    <a href="{{ url_for('my_items') }}" class="btn btn-outline-primary">
+      <i class="bi bi-box-seam me-1"></i> View My Items
+    </a>
+  </div>
+
+  {% if requests %}
+  <div class="row g-3">
+    {% for req in requests %}
+    <div class="col-12">
+      <div class="app-card p-3 p-md-4">
+        <div class="row align-items-center g-3">
+          
+          <!-- Item Thumbnail & Info -->
+          <div class="col-md-5 d-flex align-items-center gap-3">
+            {% if req.image %}
+              <img src="{{ url_for('static', filename='uploads/' + req.image) }}" alt="{{ req.item_name }}" class="item-thumb-sm">
+            {% else %}
+              <div class="item-thumb-placeholder-sm">
+                {% if req.category == 'Books' %}<i class="bi bi-book"></i>
+                {% elif req.category == 'Tools' %}<i class="bi bi-tools"></i>
+                {% elif req.category == 'Sports' %}<i class="bi bi-trophy"></i>
+                {% elif req.category == 'Electronics' %}<i class="bi bi-laptop"></i>
+                {% else %}<i class="bi bi-box-seam"></i>{% endif %}
+              </div>
+            {% endif %}
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="category-chip" style="font-size: 0.75rem;">{{ req.category }}</span>
+                {% if req.status == 'Pending' %}
+                  <span class="badge-status badge-pending"><i class="bi bi-clock-fill"></i> Pending</span>
+                {% elif req.status == 'Approved' %}
+                  <span class="badge-status badge-approved"><i class="bi bi-check-circle-fill"></i> Approved</span>
+                {% elif req.status == 'Rejected' %}
+                  <span class="badge-status badge-rejected"><i class="bi bi-x-circle-fill"></i> Rejected</span>
+                {% else %}
+                  <span class="badge-status badge-returned"><i class="bi bi-arrow-repeat"></i> Returned</span>
+                {% endif %}
+              </div>
+              <h5 class="h6 fw-bold text-dark mb-0">
+                <a href="{{ url_for('item_details', item_id=req.item_id) }}" class="text-dark text-decoration-none hover-primary">
+                  {{ req.item_name }}
+                </a>
+              </h5>
+              <span class="text-muted small">Requested: {{ req.requested_at.strftime('%b %d, %Y - %I:%M %p') if req.requested_at else 'Recent' }}</span>
+            </div>
+          </div>
+
+          <!-- Borrower Information -->
+          <div class="col-md-4 border-start border-light ps-md-4">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <div class="avatar-circle" style="width: 28px; height: 28px; font-size: 0.75rem;">
+                {{ req.borrower_name[:1] | upper }}
+              </div>
+              <strong class="text-dark">{{ req.borrower_name }}</strong>
+            </div>
+            <div class="text-muted small d-flex flex-column gap-1">
+              <span><i class="bi bi-envelope text-primary me-1"></i> {{ req.borrower_email }}</span>
+              {% if req.borrower_phone %}
+              <span><i class="bi bi-telephone text-primary me-1"></i> {{ req.borrower_phone }}</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="col-md-3 text-md-end">
+            {% if req.status == 'Pending' %}
+            <div class="d-flex gap-2 justify-content-md-end">
+              <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ req.id }}">
+                <i class="bi bi-check-lg"></i> Approve
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ req.id }}">
+                <i class="bi bi-x-lg"></i> Reject
+              </button>
+            </div>
+            {% elif req.status == 'Approved' %}
+            <span class="badge bg-info-subtle text-info border border-info-subtle px-3 py-2 rounded-pill small">
+              <i class="bi bi-info-circle me-1"></i> Lent out to borrower
+            </span>
+            {% else %}
+            <span class="text-muted small">Request {{ req.status|lower }}</span>
+            {% endif %}
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Approve Modal -->
+    <div class="modal fade" id="approveModal{{ req.id }}" tabindex="-1" aria-labelledby="approveLabel{{ req.id }}" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title fw-bold" id="approveLabel{{ req.id }}">Approve Borrow Request</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body py-3">
+            <p class="text-dark mb-1">
+              Approve <strong>{{ req.borrower_name }}</strong>'s request to borrow <strong>{{ req.item_name }}</strong>?
+            </p>
+            <p class="text-muted small mb-0">
+              The item will be marked as <strong>Lent</strong> in the community catalog.
+            </p>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+            <form method="POST" action="{{ url_for('approve_request', request_id=req.id) }}">
+              <button type="submit" class="btn btn-success">Yes, Approve Request</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reject Modal -->
+    <div class="modal fade" id="rejectModal{{ req.id }}" tabindex="-1" aria-labelledby="rejectLabel{{ req.id }}" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title fw-bold" id="rejectLabel{{ req.id }}">Decline Borrow Request</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body py-3">
+            <p class="text-dark mb-0">
+              Are you sure you want to decline this borrow request from <strong>{{ req.borrower_name }}</strong>?
+            </p>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+            <form method="POST" action="{{ url_for('reject_request', request_id=req.id) }}">
+              <button type="submit" class="btn btn-danger">Decline Request</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">
+      <i class="bi bi-inbox"></i>
+    </div>
+    <h3 class="h4 fw-bold text-dark mb-2">No Requests Received Yet</h3>
+    <p class="text-muted mb-4" style="max-width: 450px; margin: 0 auto;">
+      When community members request to borrow any of your listed items, their requests will appear here for your review and approval.
+    </p>
+    <a href="{{ url_for('add_item') }}" class="btn btn-primary px-4">
+      <i class="bi bi-plus-circle me-1"></i> List More Items
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
