@@ -61,10 +61,12 @@ def get_db_connection():
         "port": port
     }
     
-    # Optional SSL for cloud databases (e.g. Aiven, TiDB)
-    ssl_ca = os.environ.get("DB_SSL_CA")
-    if ssl_ca:
-        conn_params["ssl_ca"] = ssl_ca
+    # Cloud database SSL support (e.g. TiDB Cloud / Aiven)
+    if host != "localhost":
+        if os.path.exists("/etc/ssl/certs/ca-certificates.crt"):
+            conn_params["ssl_ca"] = "/etc/ssl/certs/ca-certificates.crt"
+        elif os.environ.get("DB_SSL_CA"):
+            conn_params["ssl_ca"] = os.environ.get("DB_SSL_CA")
 
     return mysql.connector.connect(**conn_params)
 
