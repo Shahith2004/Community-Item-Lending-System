@@ -1145,6 +1145,552 @@ def logout():
 # =========================================================
 # RUN APPLICATION
 # =========================================================
+
+
+# =========================================================
+# MOBILE APPLICATION REST API ENDPOINTS
+# =========================================================
+from flask_cors import CORS
+from flask import jsonify
+
+CORS(app)
+
+
+def get_request_user_id():
+    """Extract user_id from session, headers, or query/body parameters."""
+    if "user_id" in session:
+        return session["user_id"]
+    
+    header_uid = request.headers.get("X-User-Id")
+    if header_uid:
+        try:
+            return int(header_uid)
+        except ValueError:
+            pass
+
+    req_data = request.get_json(silent=True) or {}
+    uid = req_data.get("user_id") or request.form.get("user_id") or request.args.get("user_id")
+    if uid:
+        try:
+            return int(uid)
+        except ValueError:
+            pass
+    return None
+
+
+@app.route("/api/auth/register", methods=["POST"])
+def api_register():
+    data = request.get_json(silent=True) or request.form or {}
+    name = (data.get("name") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+    phone = (data.get("phone") or "").strip()
+
+    if not name or not email or not password:
+        return jsonify({"success": False, "message": "Name, email, and password are required."}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+        if cur.fetchone():
+            return jsonify({"success": False, "message": "An account with this email already exists."}), 409
+
+        password_hash = generate_password_hash(password)
+        cur.execute(
+            "INSERT INTO users (name, email, password, phone) VALUES (%s, %s, %s, %s)",
+            (name, email, password_hash, phone)
+        )
+        conn.commit()
+        user_id = cur.lastrowid
+        return jsonify({
+            "success": True,
+            "message": "Account created successfully!",
+            "user": {
+                "id": user_id,
+                "name": name,
+                "email": email,
+                "phone": phone
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Registration failed: {str(e)}"}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def api_login():
+    data = request.get_json(silent=True) or request.form or {}
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+
+    if not email or not password:
+        return jsonify({"success": False, "message": "Email and password are required."}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+        if user and check_password_hash(user["password"], password):
+            session["user_id"] = user["id"]
+            session["user_name"] = user["name"]
+            session["user_email"] = user["email"]
+            return jsonify({
+                "success": True,
+                "message": "Login successful!",
+                "user": {
+                    "id": user["id"],
+                    "name": user["name"],
+                    "email": user["email"],
+                    "phone": user.get("phone") or ""
+                }
+            })
+        return jsonify({"success": False, "message": "Invalid email or password."}), 401
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/dashboard", methods=["GET"])
+def api_dashboard():
+    user_id = get_request_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT COUNT(*) AS total FROM items WHERE owner_id = %s", (user_id,))
+        my_items = cur.fetchone()["total"]
+
+        cur.execute("SELECT COUNT(*) AS total FROM items WHERE owner_id != %s AND availability = 'Available'", (user_id,))
+        available_items = cur.fetchone()["total"]
+
+        cur.execute("SELECT COUNT(*) AS total FROM lending_requests WHERE owner_id = %s AND status = 'Pending'", (user_id,))
+        pending_requests = cur.fetchone()["total"]
+
+        cur.execute("SELECT COUNT(*) AS total FROM lending_requests WHERE borrower_id = %s AND status = 'Approved'", (user_id,))
+        active_borrows = cur.fetchone()["total"]
+
+        cur.execute("SELECT COUNT(*) AS total FROM lending_requests WHERE (owner_id = %s OR borrower_id = %s) AND status = 'Returned'", (user_id, user_id))
+        completed_transactions = cur.fetchone()["total"]
+
+        cur.execute("""
+            SELECT items.id, items.item_name, items.category, items.description, items.image, items.created_at, users.name AS owner_name
+            FROM items
+            JOIN users ON items.owner_id = users.id
+            WHERE items.owner_id != %s AND items.availability = 'Available'
+            ORDER BY items.created_at DESC
+            LIMIT 5
+        """, (user_id,))
+        recent_items = cur.fetchall()
+        for item in recent_items:
+            if item.get("created_at"):
+                item["created_at"] = item["created_at"].strftime("%b %d, %Y")
+
+        return jsonify({
+            "success": True,
+            "stats": {
+                "my_items": my_items,
+                "available_items": available_items,
+                "pending_requests": pending_requests,
+                "active_borrows": active_borrows,
+                "completed_transactions": completed_transactions
+            },
+            "recent_items": recent_items
+        })
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/items", methods=["GET"])
+def api_get_items():
+    user_id = get_request_user_id() or 0
+    search = request.args.get("search", "").strip()
+    category = request.args.get("category", "").strip()
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        query = """
+            SELECT items.id, items.item_name, items.category, items.description, items.image, items.availability, items.created_at, users.name AS owner_name
+            FROM items
+            JOIN users ON items.owner_id = users.id
+            WHERE items.owner_id != %s AND items.availability = 'Available'
+        """
+        params = [user_id]
+
+        if search:
+            query += " AND (items.item_name LIKE %s OR items.category LIKE %s OR items.description LIKE %s OR users.name LIKE %s)"
+            val = f"%{search}%"
+            params.extend([val, val, val, val])
+
+        if category and category != "All":
+            query += " AND items.category = %s"
+            params.append(category)
+
+        query += " ORDER BY items.created_at DESC"
+        cur.execute(query, tuple(params))
+        items = cur.fetchall()
+
+        for itm in items:
+            if itm.get("created_at"):
+                itm["created_at"] = itm["created_at"].strftime("%b %d, %Y")
+
+        return jsonify({"success": True, "items": items})
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/items/<int:item_id>", methods=["GET"])
+def api_get_item_details(item_id):
+    user_id = get_request_user_id() or 0
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT items.id, items.item_name, items.category, items.description, items.image, items.availability, items.created_at, items.owner_id,
+                   users.name AS owner_name, users.email AS owner_email, users.phone AS owner_phone
+            FROM items
+            JOIN users ON items.owner_id = users.id
+            WHERE items.id = %s
+        """, (item_id,))
+        item = cur.fetchone()
+
+        if not item:
+            return jsonify({"success": False, "message": "Item not found"}), 404
+
+        if item.get("created_at"):
+            item["created_at"] = item["created_at"].strftime("%B %d, %Y")
+
+        cur.execute("""
+            SELECT id, status FROM lending_requests
+            WHERE item_id = %s AND borrower_id = %s AND status IN ('Pending', 'Approved')
+        """, (item_id, user_id))
+        user_request = cur.fetchone()
+
+        return jsonify({"success": True, "item": item, "user_request": user_request})
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/items/add", methods=["POST"])
+def api_add_item():
+    user_id = get_request_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    item_name = (request.form.get("item_name") or "").strip()
+    category = (request.form.get("category") or "").strip()
+    description = (request.form.get("description") or "").strip()
+
+    if not item_name or not category:
+        return jsonify({"success": False, "message": "Item name and category are required."}), 400
+
+    image_file = request.files.get("image")
+    image_filename = save_item_image(image_file)
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO items (owner_id, item_name, category, description, image) VALUES (%s, %s, %s, %s, %s)",
+            (user_id, item_name, category, description, image_filename)
+        )
+        conn.commit()
+        item_id = cur.lastrowid
+        return jsonify({"success": True, "message": "Item added successfully!", "item_id": item_id})
+    except Exception as e:
+        if image_filename:
+            delete_item_image(image_filename)
+        return jsonify({"success": False, "message": f"Failed to add item: {str(e)}"}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/my-items", methods=["GET"])
+def api_my_items():
+    user_id = get_request_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT * FROM items WHERE owner_id = %s ORDER BY created_at DESC", (user_id,))
+        items = cur.fetchall()
+        for itm in items:
+            if itm.get("created_at"):
+                itm["created_at"] = itm["created_at"].strftime("%b %d, %Y")
+        return jsonify({"success": True, "items": items})
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/items/delete/<int:item_id>", methods=["POST", "DELETE"])
+def api_delete_item(item_id):
+    user_id = get_request_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT image FROM items WHERE id = %s AND owner_id = %s", (item_id, user_id))
+        item = cur.fetchone()
+        if not item:
+            return jsonify({"success": False, "message": "Item not found or unauthorized"}), 404
+
+        if item.get("image"):
+            delete_item_image(item["image"])
+
+        cur.execute("DELETE FROM items WHERE id = %s AND owner_id = %s", (item_id, user_id))
+        conn.commit()
+        return jsonify({"success": True, "message": "Item deleted successfully"})
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/requests/create/<int:item_id>", methods=["POST"])
+def api_request_item(item_id):
+    user_id = get_request_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT id, owner_id, availability, item_name FROM items WHERE id = %s", (item_id,))
+        item = cur.fetchone()
+        if not item:
+            return jsonify({"success": False, "message": "Item not found"}), 404
+
+        if item["owner_id"] == user_id:
+            return jsonify({"success": False, "message": "You cannot request your own item."}), 400
+
+        if item["availability"] != "Available":
+            return jsonify({"success": False, "message": "Item is not currently available."}), 400
+
+        cur.execute("SELECT id FROM lending_requests WHERE item_id = %s AND borrower_id = %s AND status = 'Pending'", (item_id, user_id))
+        if cur.fetchone():
+            return jsonify({"success": False, "message": "You already have a pending request for this item."}), 400
+
+        cur.execute(
+            "INSERT INTO lending_requests (item_id, borrower_id, owner_id, status) VALUES (%s, %s, %s, 'Pending')",
+            (item_id, user_id, item["owner_id"])
+        )
+        conn.commit()
+        return jsonify({"success": True, "message": f"Borrow request sent for '{item['item_name']}'!"})
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/requests/received", methods=["GET"])
+def api_received_requests():
+    user_id = get_request_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT lending_requests.id, lending_requests.status, lending_requests.requested_at,
+                   items.id AS item_id, items.item_name, items.category, items.image,
+                   users.name AS borrower_name, users.email AS borrower_email, users.phone AS borrower_phone
+            FROM lending_requests
+            JOIN items ON lending_requests.item_id = items.id
+            JOIN users ON lending_requests.borrower_id = users.id
+            WHERE lending_requests.owner_id = %s
+            ORDER BY lending_requests.requested_at DESC
+        """, (user_id,))
+        requests = cur.fetchall()
+        for r in requests:
+            if r.get("requested_at"):
+                r["requested_at"] = r["requested_at"].strftime("%b %d, %Y")
+        return jsonify({"success": True, "requests": requests})
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/requests/approve/<int:request_id>", methods=["POST"])
+def api_approve_request(request_id):
+    user_id = get_request_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT lending_requests.id, lending_requests.item_id, lending_requests.owner_id, lending_requests.status, items.availability
+            FROM lending_requests
+            JOIN items ON lending_requests.item_id = items.id
+            WHERE lending_requests.id = %s AND lending_requests.owner_id = %s
+        """, (request_id, user_id))
+        borrow_req = cur.fetchone()
+        if not borrow_req:
+            return jsonify({"success": False, "message": "Request not found"}), 404
+
+        cur.execute("UPDATE lending_requests SET status = 'Approved' WHERE id = %s AND owner_id = %s", (request_id, user_id))
+        cur.execute("UPDATE items SET availability = 'Lent' WHERE id = %s", (borrow_req["item_id"],))
+        conn.commit()
+        return jsonify({"success": True, "message": "Request approved! Item marked as Lent."})
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/requests/reject/<int:request_id>", methods=["POST"])
+def api_reject_request(request_id):
+    user_id = get_request_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("UPDATE lending_requests SET status = 'Rejected' WHERE id = %s AND owner_id = %s", (request_id, user_id))
+        conn.commit()
+        return jsonify({"success": True, "message": "Borrow request declined."})
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/requests/my-requests", methods=["GET"])
+def api_my_requests():
+    user_id = get_request_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT lending_requests.id, lending_requests.status, lending_requests.requested_at, lending_requests.item_id,
+                   items.item_name, items.category, items.description, items.image,
+                   users.name AS owner_name, users.email AS owner_email, users.phone AS owner_phone
+            FROM lending_requests
+            JOIN items ON lending_requests.item_id = items.id
+            JOIN users ON lending_requests.owner_id = users.id
+            WHERE lending_requests.borrower_id = %s AND lending_requests.status IN ('Pending', 'Approved')
+            ORDER BY lending_requests.requested_at DESC
+        """, (user_id,))
+        requests = cur.fetchall()
+        for r in requests:
+            if r.get("requested_at"):
+                r["requested_at"] = r["requested_at"].strftime("%b %d, %Y")
+        return jsonify({"success": True, "requests": requests})
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/requests/return/<int:request_id>", methods=["POST"])
+def api_return_item(request_id):
+    user_id = get_request_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT id, item_id FROM lending_requests
+            WHERE id = %s AND borrower_id = %s AND status = 'Approved'
+        """, (request_id, user_id))
+        borrow_req = cur.fetchone()
+        if not borrow_req:
+            return jsonify({"success": False, "message": "Approved request not found"}), 404
+
+        cur.execute("UPDATE lending_requests SET status = 'Returned' WHERE id = %s", (request_id,))
+        cur.execute("UPDATE items SET availability = 'Available' WHERE id = %s", (borrow_req["item_id"],))
+        conn.commit()
+        return jsonify({"success": True, "message": "Item returned successfully! Transaction logged."})
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/transactions", methods=["GET"])
+def api_transactions():
+    user_id = get_request_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT lending_requests.id, lending_requests.status, lending_requests.requested_at,
+                   items.item_name, items.category, items.image,
+                   owner.name AS owner_name, owner.email AS owner_email,
+                   borrower.name AS borrower_name, borrower.email AS borrower_email
+            FROM lending_requests
+            JOIN items ON lending_requests.item_id = items.id
+            JOIN users AS owner ON lending_requests.owner_id = owner.id
+            JOIN users AS borrower ON lending_requests.borrower_id = borrower.id
+            WHERE lending_requests.status = 'Returned'
+              AND (lending_requests.owner_id = %s OR lending_requests.borrower_id = %s)
+            ORDER BY lending_requests.requested_at DESC
+        """, (user_id, user_id))
+        transactions = cur.fetchall()
+        for t in transactions:
+            if t.get("requested_at"):
+                t["requested_at"] = t["requested_at"].strftime("%b %d, %Y")
+        return jsonify({"success": True, "transactions": transactions})
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route("/api/profile", methods=["GET"])
+def api_profile():
+    user_id = get_request_user_id()
+    if not user_id:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT id, name, email, phone, created_at FROM users WHERE id = %s", (user_id,))
+        user = cur.fetchone()
+        if not user:
+            return jsonify({"success": False, "message": "User not found"}), 404
+
+        cur.execute("SELECT COUNT(*) AS total FROM items WHERE owner_id = %s", (user_id,))
+        items_shared = cur.fetchone()["total"]
+
+        cur.execute("SELECT COUNT(*) AS total FROM lending_requests WHERE borrower_id = %s AND status = 'Returned'", (user_id,))
+        items_borrowed = cur.fetchone()["total"]
+
+        if user.get("created_at"):
+            user["created_at"] = user["created_at"].strftime("%B %Y")
+
+        return jsonify({
+            "success": True,
+            "user": user,
+            "items_shared": items_shared,
+            "items_borrowed": items_borrowed
+        })
+    finally:
+        cur.close()
+        conn.close()
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
